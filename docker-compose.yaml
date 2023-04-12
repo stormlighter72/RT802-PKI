@@ -28,14 +28,22 @@ services:
         global:
           ipv4_address: 192.168.1.101
 ####################################################################
-  # site_b:
-  #     build: Site_B
-  #     container_name: Site_B
-  #     depends_on:
-  #       - site_central
-  #     networks:
-  #       global:
-  #         ipv4_address: 192.168.1.102
+  site_b:
+      build: Site_B
+      container_name: Site_B
+      command: sh -c "mkdir -p /usr/share/ca-certificates/PKI && echo "PKI/root_cert.crt" >> /etc/ca-certificates.conf && tail -f /dev/null"
+      depends_on:
+        - site_central
+      volumes:
+        - type: bind
+          source: ./Site_B/PKI
+          target: /PKI
+        - type: bind
+          source: ./Site_B/Cert
+          target: /usr/share/ca-certificates/PKI
+      networks:
+        global:
+          ipv4_address: 192.168.1.102
 ####################################################################
 
 #############################LesVolumes#############################

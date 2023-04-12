@@ -27,8 +27,20 @@ class PKIServer:
             conn = context.wrap_socket(conn, server_side=True)
             # Traitement de la requête et envoi de la réponse
             data = conn.recv(1024)
-            response = b"OK"
-            conn.sendall(response)
+            # Récupération de la clé publique du site A
+            public_key = crypto.load_publickey(crypto.FILETYPE_PEM, data)
+            # Création du certificat X509
+            cert = crypto.X509()
+            cert.get_subject().CN = "Root CA"
+            cert.set_pubkey(public_key)
+            cert.set_serial_number(1000)
+            cert.gmtime_adj_notBefore(0)
+            cert.gmtime_adj_notAfter(315360000)
+            # cert.set_issuer(crypto.X509Name('CN=Root CA'))
+            # cert.set_subject(crypto.X509Name('CN=Site A'))
+            cert.sign(crypto.load_privatekey(crypto.FILETYPE_PEM, open(keyfile).read()), 'sha256')
+            # Envoi du certificat X509 au site A
+            conn.sendall(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
             # Fermeture de la connexion
             conn.shutdown(socket.SHUT_RDWR)
             conn.close()

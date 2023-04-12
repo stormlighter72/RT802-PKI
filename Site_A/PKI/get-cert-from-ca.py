@@ -22,6 +22,6 @@ with socket.create_connection((SERVER_ADDRESS, SERVER_PORT)) as sock:
         ssock.sendall(pub_key)
         # Réception du certificat du serveur
         data = ssock.recv(1024)
-        with open("site_a.crt", "wb") as cert_file:
+        with open("Cert/site_a.crt", "wb") as cert_file:
             cert_file.write(data)
         #print(data.decode())

@@ -31,6 +31,7 @@ class PKIServer:
             public_key = crypto.load_publickey(crypto.FILETYPE_PEM, data)
             # Création du certificat X509
             cert = crypto.X509()
+            cert.get_subject().CN = "Root CA"
             cert.set_pubkey(public_key)
             cert.set_serial_number(1000)
             cert.gmtime_adj_notBefore(0)
