@@ -1,0 +1,51 @@
+############################LesServices#############################
+services:
+  site_central:
+      build: Site_Central
+      command: tail -f /dev/null
+      volumes:
+        - type: bind
+          source: ./Site_Central/PKI
+          target: /PKI
+      networks:
+        global:
+          ipv4_address: 192.168.1.100
+####################################################################
+  site_a:
+      build: Site_A
+      container_name: Site_A
+      command: sh -c "mkdir -p /usr/share/ca-certificates/PKI && echo "PKI/root_cert.crt" >> /etc/ca-certificates.conf && tail -f /dev/null"
+      depends_on:
+        - site_central
+      volumes:
+        - type: bind
+          source: ./Site_A/PKI
+          target: /PKI
+        - type: bind
+          source: ./Site_A/Cert
+          target: /usr/share/ca-certificates/PKI
+      networks:
+        global:
+          ipv4_address: 192.168.1.101
+####################################################################
+  # site_b:
+  #     build: Site_B
+  #     container_name: Site_B
+  #     depends_on:
+  #       - site_central
+  #     networks:
+  #       global:
+  #         ipv4_address: 192.168.1.102
+####################################################################
+
+#############################LesVolumes#############################
+# volumes:
+
+#############################LesBridges#############################
+networks:
+  global:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: "192.168.1.0/24"
+        gateway: "192.168.1.254"
