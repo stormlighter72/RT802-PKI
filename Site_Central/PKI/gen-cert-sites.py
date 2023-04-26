@@ -68,4 +68,3 @@ keyfile = "/etc/ssl/private/root_key.pem"
 # Instanciation du serveur PKI et démarrage du serveur
 server = PKIServer("0.0.0.0", 32700, certfile, keyfile)
 server.start()
-#
