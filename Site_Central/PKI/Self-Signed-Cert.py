@@ -28,8 +28,8 @@ def generate_root_cert(ip_address):
     cert.sign(k, "sha256")
 
     # Exportation du certificat et de la clé privée dans les fichiers "root_cert.crt" et "root_key.crt"
-    certfile = "root_cert.crt"
-    keyfile = "/etc/ssl/private/root_key.crt"
+    certfile = "root_cert.pem"
+    keyfile = "/etc/ssl/private/root_key.pem"
     # La Keyfile sera enregistré dans le dossier /etc/ssl/private
     with open(certfile, "wb") as f:
         f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))

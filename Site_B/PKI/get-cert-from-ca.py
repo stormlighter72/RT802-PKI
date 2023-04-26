@@ -2,6 +2,7 @@ import socket
 import ssl
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
+from OpenSSL import crypto
 
 # Définition des paramètres de connexion
 SERVER_ADDRESS = "192.168.1.100"
@@ -10,6 +11,12 @@ SERVER_PORT = 32700
 # Génération de la paire de clés RSA et extraction de la clé publique
 key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 pub_key = key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.PKCS1)
+
+# Exportation des clés dans le fichier "site_b_key.crt"
+keyfile = "/etc/ssl/private/site_b_key.crt"
+# La Keyfile sera enregistré dans le dossier /etc/ssl/private
+with open(keyfile, "wb") as f:
+    f.write(key.private_bytes(encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8, encryption_algorithm=serialization.NoEncryption()))
 
 # Connexion au serveur PKI
 context = ssl.create_default_context()

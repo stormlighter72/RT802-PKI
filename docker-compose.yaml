@@ -2,11 +2,14 @@
 services:
   site_central:
       build: Site_Central
-      command: tail -f /dev/null
+      command: sh -c "mkdir -p /usr/share/ca-certificates/Cert-Sites && echo "Cert-Sites/site_a.pem" >> /etc/ca-certificates.conf && echo "Cert-Sites/site_b.pem" >> /etc/ca-certificates.conf && tail -f /dev/null"
       volumes:
         - type: bind
           source: ./Site_Central/PKI
           target: /PKI
+        - type: bind
+          source: ./Site_Central/PKI/Cert-Sites
+          target: /usr/share/ca-certificates/Cert-Sites
       networks:
         global:
           ipv4_address: 192.168.1.100
@@ -14,7 +17,7 @@ services:
   site_a:
       build: Site_A
       container_name: Site_A
-      command: sh -c "mkdir -p /usr/share/ca-certificates/PKI && echo "PKI/root_cert.crt" >> /etc/ca-certificates.conf && tail -f /dev/null"
+      command: sh -c "mkdir -p /usr/share/ca-certificates/PKI && echo "PKI/root_cert.pem" >> /etc/ca-certificates.conf && tail -f /dev/null"
       depends_on:
         - site_central
       volumes:
@@ -31,7 +34,7 @@ services:
   site_b:
       build: Site_B
       container_name: Site_B
-      command: sh -c "mkdir -p /usr/share/ca-certificates/PKI && echo "PKI/root_cert.crt" >> /etc/ca-certificates.conf && tail -f /dev/null"
+      command: sh -c "mkdir -p /usr/share/ca-certificates/PKI && echo "PKI/root_cert.pem" >> /etc/ca-certificates.conf && tail -f /dev/null"
       depends_on:
         - site_central
       volumes:

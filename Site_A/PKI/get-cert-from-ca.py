@@ -11,8 +11,16 @@ SERVER_PORT = 32700
 key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 pub_key = key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.PKCS1)
 
+# Exportation des clés dans le fichier "site_b_key.crt"
+keyfile = "/etc/ssl/private/site_a_key.crt"
+# La Keyfile sera enregistré dans le dossier /etc/ssl/private
+with open(keyfile, "wb") as f:
+    f.write(key.private_bytes(encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8, encryption_algorithm=serialization.NoEncryption()))
+
 # Connexion au serveur PKI
+root_cert = "/usr/share/ca-certificates/PKI/root_cert.pem"
 context = ssl.create_default_context()
+context.load_cert_chain(root_cert)
 context.check_hostname = False
 context.verify_mode = ssl.CERT_NONE
 
