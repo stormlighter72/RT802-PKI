@@ -21,6 +21,12 @@ class PKIServer:
         while True:
             # Acceptation de la connexion
             conn, addr = sock.accept()
+            
+            if addr[0] == '192.168.1.101':
+                print("Site A s'est connecté !")
+            elif addr[0] == '192.168.1.102':
+                print("Site B s'est connecté !")
+            
             # Encapsulation de la socket dans un contexte SSL/TLS
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             context.load_cert_chain(certfile=self.certfile, keyfile=self.keyfile)
@@ -38,6 +44,20 @@ class PKIServer:
             else:
                 cert.get_subject().CN = "unknown"
             # cert.get_subject().CN = "Root CA"
+            #Issuer = crypto.X509Name()
+            Issuer = crypto.X509Name(crypto.X509().get_subject())
+            Issuer.CN = 'Root CA'
+            Issuer.OU = "PKI"
+            Issuer.O = "PKI"
+            Issuer.L = "Paris"
+            Issuer.ST = "Ile de France"
+            Issuer.C = "FR"
+            cert.set_issuer(Issuer)
+            # cert.set_issuer().ST = "Ile de France"
+            # cert.set_issuer().L = "Paris"
+            # cert.set_issuer().O = "PKI"
+            # cert.set_issuer().OU = "PKI"
+            # cert.set_issuer().CN = "Root CA"
             cert.set_pubkey(public_key)
             cert.set_serial_number(1000)
             cert.gmtime_adj_notBefore(0)
@@ -60,11 +80,28 @@ class PKIServer:
             # Fermeture de la connexion
             conn.shutdown(socket.SHUT_RDWR)
             conn.close()
+            if addr[0] == '192.168.1.101':
+                print("Certificat envoyé à Site A !")
+            elif addr[0] == '192.168.1.102':
+                print("Certificat envoyé à Site B !")
 
 # Chargement du certificat et de la clé privée
-certfile = "/PKI/root_cert.pem"
-keyfile = "/etc/ssl/private/root_key.pem"
+certfile = "/PKI/root_cert.crt"
+keyfile = "/etc/ssl/private/root_key.crt"
 
 # Instanciation du serveur PKI et démarrage du serveur
 server = PKIServer("0.0.0.0", 32700, certfile, keyfile)
+# while True:
+#     # Accepter une connexion entrante
+#     client, adresse_client = server.accept()
+#     print("Connexion entrante de", adresse_client[0])
+
+
+
 server.start()
+
+
+
+
+# else:
+#     certfile_name = "unknown.crt"

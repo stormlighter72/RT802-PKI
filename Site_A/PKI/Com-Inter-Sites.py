@@ -1,50 +1,77 @@
-import socket
 import ssl
+import socket
+import threading
 
-# Configuration du socket
-client_a = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_a.connect(('192.168.1.100', 32700))
+# Adresse et port d'écoute du site A
+site_a_host = '192.168.1.101'
+site_a_port = 32700
 
-# Création d'un contexte SSL pour une communication sécurisée
-context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-context.load_cert_chain(certfile="/PKI/Cert/site_a.crt", keyfile="/etc/ssl/private/site_a_key.crt")
+# Chemin du certificat du site central
+certfile_central = '/usr/share/ca-certificates/PKI/root_cert.crt'
+# Chemin du certificat du site A
+certfile_site_a = '/PKI/Cert/site_a.crt'
+keyfile_site_a = '/etc/ssl/private/site_a_key.crt'
 
-# Ajout du certificat auto-signé du serveur à la liste des certificats de confiance
-context.load_verify_locations(cafile="/usr/share/ca-certificates/PKI/root_cert.crt")
-context.check_hostname = False
-# context.verify_mode = ssl.CERT_NONE
+# Création d'un contexte SSL pour le site A
+# context_site_a = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+# context_site_a.load_verify_locations(certfile_central)
+context_site_a = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+context_site_a.check_hostname = False
+context_site_a.verify_mode = ssl.CERT_NONE
 
-# Création d'une socket SSL
-client_a = context.wrap_socket(client_a, server_hostname='Site A')
+# Fonction pour recevoir les messages
+def receive_messages():
+    while True:
+        context_site_a = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context_site_a.load_cert_chain(certfile=certfile_site_a, keyfile=keyfile_site_a)
+        response_conn, _ = response_server.accept()
+        message = response_conn.recv(4096)
+        print('Message déchiffré (site A) :', message.decode(errors='ignore'))
+        response_conn.close()
 
-# Demande de certificat sécurisé TLS au serveur central PKI
-client_a.send(b"Bonjour PKI pouvez-vous me fournir un certificat securise TLS pour une communication avec client B")
+# Écoute des connexions entrantes
+response_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+response_server.bind((site_a_host, site_a_port))
+response_server.listen(1)
 
-# Réception du certificat du serveur
-certificat = client_a.recv(1024)
+print('Serveur A en attente de connexions...')
 
-# Création d'un contexte SSL pour la communication avec client B
-context_b = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-context_b.load_cert_chain(certfile="/PKI/Cert/site_a.crt", keyfile="/etc/ssl/private/site_a_key.crt")
+# Démarrage du serveur en arrière-plan pour recevoir les messages
+receive_thread = threading.Thread(target=receive_messages)
+receive_thread.start()
 
-# Ajout du certificat auto-signé du serveur à la liste des certificats de confiance
-context_b.load_verify_locations(cafile="/usr/share/ca-certificates/PKI/root_cert.crt")
-context_b.check_hostname = False
-# context.verify_mode = ssl.CERT_NONE
+# Attente de l'appui sur la touche "Entrée"
+input('Appuyez sur Entrée pour continuer...')
 
-# Création d'une socket SSL pour la communication avec client B
-client_b = context_b.wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM), server_hostname='Site B')
-client_b.connect(('192.168.1.102', 32700))
+# Demande de la destination et du message
+destination = input('Site Destination (A ou B) : ').encode()
+message = input('Message à envoyer : ').encode()
 
-# Envoi du message sécurisé TLS à client B
-client_b.send(b"Bonjour client B, comment allez-vous ?")
+# Connexion au site central
+with socket.create_connection(('192.168.1.100', 32700)) as sock:
+    # Création d'un contexte SSL pour le site A
+    # Configuration pour vérifier le certificat du serveur central
+    # context_site_a = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    # context_site_a.check_hostname = False
+    # context_site_a.verify_mode = ssl.CERT_NONE
 
-# Réception de la réponse sécurisée TLS de client B
-reponse = client_b.recv(1024)
-print(reponse)
+    # context_site_a.load_verify_locations(certfile_site_a)
+    context_site_a.load_verify_locations(certfile_central)
+    # context_site_a.load_cert_chain(certfile=certfile_site_a, keyfile=keyfile_site_a)
+    # context_site_a.load_cert_chain(certfile=certfile_central)
 
-# Fermeture de la connexion SSL avec client B
-client_b.close()
+    with context_site_a.wrap_socket(sock, server_hostname='192.168.1.100') as ssock:
+        # Envoi du site de destination
+        ssock.sendall(destination)
 
-# Fermeture de la connexion SSL avec le serveur central PKI
-client_a.close()
+        # Chiffrement du message
+        #encrypted_message = context_site_a.encrypt(message)
+        #encrypted_message = ssock.sendall(message)
+        #ssock.sendall(encrypted_message)
+        ssock.sendall(message)
+
+        # Réception de données
+        response = ssock.recv(4096)
+
+        # Traitement des données reçues
+        print('Réponse du site central (site A) :', response.decode())

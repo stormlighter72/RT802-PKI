@@ -22,14 +22,17 @@ def generate_root_cert(ip_address):
     cert.set_pubkey(k)
     
     # Ajout de l'adresse IP comme SAN
-    ext = crypto.X509Extension(b"subjectAltName", False, f"IP:{ip_address}".encode())
-    cert.add_extensions([ext])
+    # ext_SAN = crypto.X509Extension(b"subjectAltName", False, f"IP:{ip_address}".encode())
+    # ext_SAN = crypto.X509Extension(b"basicConstraints", True, f"IP:{ip_address}".encode())
+    cert.add_extensions([crypto.X509Extension(b"subjectAltName", False, f"IP:{ip_address}".encode())])
+    cert.add_extensions([crypto.X509Extension(b"basicConstraints", True, f"CA:TRUE".encode())])
+    # cert.add_extensions([ext])
     
     cert.sign(k, "sha256")
 
     # Exportation du certificat et de la clé privée dans les fichiers "root_cert.crt" et "root_key.crt"
-    certfile = "root_cert.pem"
-    keyfile = "/etc/ssl/private/root_key.pem"
+    certfile = "root_cert.crt"
+    keyfile = "/etc/ssl/private/root_key.crt"
     # La Keyfile sera enregistré dans le dossier /etc/ssl/private
     with open(certfile, "wb") as f:
         f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))

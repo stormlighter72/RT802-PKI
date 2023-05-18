@@ -1,34 +1,42 @@
 import socket
 import ssl
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
 from OpenSSL import crypto
 
-# Définition des paramètres de connexion
-SERVER_ADDRESS = "192.168.1.100"
-SERVER_PORT = 32700
+# Création de la socket client
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-# Génération de la paire de clés RSA et extraction de la clé publique
-key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-pub_key = key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.PKCS1)
+# Configuration du contexte SSL/TLS
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+context.load_verify_locations("/usr/share/ca-certificates/PKI/root_cert.crt")
 
-# Exportation des clés dans le fichier "site_b_key.crt"
-keyfile = "/etc/ssl/private/site_b_key.crt"
-# La Keyfile sera enregistré dans le dossier /etc/ssl/private
-with open(keyfile, "wb") as f:
-    f.write(key.private_bytes(encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8, encryption_algorithm=serialization.NoEncryption()))
+# Connexion au serveur
+with context.wrap_socket(sock, server_hostname="192.168.1.100") as conn:
+    conn.connect(("192.168.1.100", 32700))
 
-# Connexion au serveur PKI
-context = ssl.create_default_context()
-context.check_hostname = False
-context.verify_mode = ssl.CERT_NONE
+    # Génération de la paire de clés
+    key = crypto.PKey()
+    key.generate_key(crypto.TYPE_RSA, 2048)
+    pub_key = crypto.dump_publickey(crypto.FILETYPE_PEM, key)
+    
+    # Exportation des clés dans le fichier "site_a_key.crt"
+    # La Keyfile sera enregistré dans le dossier /etc/ssl/private
+    keyfile = "/etc/ssl/private/site_b_key.crt"
+    
+    with open(keyfile, "wb") as f:
+        f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
 
-with socket.create_connection((SERVER_ADDRESS, SERVER_PORT)) as sock:
-    with context.wrap_socket(sock, server_hostname=SERVER_ADDRESS) as ssock:
-        # Envoi de la clé publique au serveur
-        ssock.sendall(pub_key)
-        # Réception du certificat du serveur
-        data = ssock.recv(1024)
-        with open("Cert/site_b.crt", "wb") as cert_file:
-            cert_file.write(data)
-        #print(data.decode())
+    # Envoi de la clé publique au serveur
+    conn.sendall(pub_key)
+
+    # Réception du certificat
+    cert_site_b = b''
+    while True:
+        data = conn.recv(4096)
+        if not data:
+            break
+        cert_site_b += data
+    cert = crypto.load_certificate(crypto.FILETYPE_PEM, cert_site_b)
+   # Enregistrement du certificat    
+    with open("Cert/site_b.crt", "wb") as f:
+        f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
+    print("Certificat bien reçu !")

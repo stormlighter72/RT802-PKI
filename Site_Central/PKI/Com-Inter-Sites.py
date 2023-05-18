@@ -1,33 +1,95 @@
-import socket
 import ssl
+import socket
 
-# Configuration du socket
-serveur_pki = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-serveur_pki.bind(('0.0.0.0', 32700))
-serveur_pki.listen(5)
+# Adresse et port d'écoute du site central
+central_host = '192.168.1.100'
+central_port = 32700
+
+# Chemin du certificat du site central
+certfile = "/PKI/root_cert.crt"
+# Chemin de la clé privée correspondante au certificat
+keyfile = "/etc/ssl/private/root_key.crt"
+
+# Chemin du certificat du site A
+certfile_site_a = '/usr/share/ca-certificates/Cert-Sites/site_a.crt'
+# Chemin du certificat du site B
+certfile_site_b = '/usr/share/ca-certificates/Cert-Sites/site_b.crt'
+
+# Création d'un contexte SSL pour le serveur central
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+
+# Configuration pour vérifier le certificat des clients
+context.check_hostname = False
+context.verify_mode = ssl.CERT_NONE
+context.load_verify_locations(certfile)
+context.load_verify_locations(certfile_site_a)
+context.load_verify_locations(certfile_site_b)
+
+# Chargement du certificat et de la clé privée du serveur central
+context.load_cert_chain(certfile=certfile, keyfile=keyfile)
+
+# Création du socket d'écoute
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind((central_host, central_port))
+server.listen(1)
+server_ssl_context = context.wrap_socket(server, server_side=True)
+print("Serveur Actif !")
 
 while True:
-    # Attente de nouvelles connexions entrantes
-    conn, addr = serveur_pki.accept()
+    # Attente d'une connexion
+    conn, addr = server_ssl_context.accept()
+    try:
+        # Réception du site de destination
+        destination = conn.recv(1024).decode()
 
-    # Création d'un contexte SSL pour une communication sécurisée
-    context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    context.load_cert_chain(certfile="root_cert.crt", keyfile="/etc/ssl/private/root_key.crt")
+        # Réception du contenu du message
+        message = conn.recv(4096)
 
-    # Création d'une socket SSL
-    conn_ssl = context.wrap_socket(conn, server_side=True)
+        # Traitement des données reçues
+        # print('Message à destination du site', destination, ':', message.decode())
 
-    # Attente de la demande de certificat du client
-    demande = conn_ssl.recv(1024)
+        # Vérification de la destination et envoi du message
+        if destination == 'A':
+            print('Message à destination du site A :', message.decode())
+            # Création d'un contexte SSL pour le site A
+            context_site_a = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            context_site_a.verify_mode = ssl.CERT_REQUIRED
+            context_site_a.load_verify_locations(certfile_site_a)
 
-    # Génération du certificat pour le client
-    certificat_client = "ceci est le certificat pour le client {}".format(addr[0])
+            # Connexion au site A
+            with socket.create_connection(('192.168.1.101', 32700)) as dest_sock:
+                with context_site_a.wrap_socket(dest_sock, server_hostname='192.168.1.101') as ssock:
+                    # Envoi du message chiffré au site A
+                    ssock.sendall(message.encode())
 
-    # Envoi du certificat au client
-    conn_ssl.send(certificat_client.encode())
+                    # Réception de la réponse du site A
+                    response = ssock.recv(4096)
 
-    # Fermeture de la connexion SSL
-    conn_ssl.close()
+                    # Envoi de la réponse chiffrée au client
+                    conn.sendall(response)
 
-# Fermeture de la socket du serveur
-serveur_pki.close()
+        elif destination == 'B':
+            print('Message à destination du site B :', message.decode())
+            # Création d'un contexte SSL pour le site B
+            context_site_b = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            context_site_a.verify_mode = ssl.CERT_REQUIRED
+            context_site_b.load_verify_locations(certfile_site_b)
+
+            # Connexion au site B
+            with socket.create_connection(('192.168.1.102', 32700)) as dest_sock:
+                with context_site_b.wrap_socket(dest_sock, server_hostname='192.168.1.102') as ssock:
+                    # Envoi du message chiffré au site B
+                    ssock.sendall(message)
+
+                    # Réception de la réponse du site B
+                    response = ssock.recv(4096)
+
+                    # Envoi de la réponse chiffrée au client
+                    conn.sendall(response)
+
+        else:
+            print('Destination inconnue :', destination)
+
+    finally:
+        # Fermeture de la connexion
+        conn.close()
