@@ -1,23 +1,30 @@
+#####################################################################
+##              Programme de communication inter-site              ##
+##                             Site B                              ##
+#####################################################################
+
+# Importation des modules
 import ssl
 import socket
 import threading
 
-# Adresse et port d'écoute du site B
+# Définition de l'adresse IP et du port d'écoute du site B
 site_b_host = '192.168.1.102'
 site_b_port = 32700
 
-# Chemin du certificat du site central
+# Chemin vers le certificat du site central
 certfile_central = '/usr/share/ca-certificates/PKI/root_cert.crt'
-# Chemin du certificat du site B
+# Chemin vers le certificat du site B
 certfile_site_b = '/PKI/Cert/site_b.crt'
+# Chemin vers la clef privée du site B
 keyfile_site_b = '/etc/ssl/private/site_b_key.crt'
 
 # Création d'un contexte SSL pour le site B
-# context_site_b = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-# context_site_b.load_verify_locations(certfile_central)
+context_site_b = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+context_site_b.check_hostname = False
+context_site_b.verify_mode = ssl.CERT_NONE
 
-
-# Fonction pour recevoir les messages
+# Fonction pour la réception des messages
 def receive_messages():
     while True:
         context_site_b = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -47,27 +54,17 @@ message = input('Message à envoyer : ').encode()
 
 # Connexion au site central
 with socket.create_connection(('192.168.1.100', 32700)) as sock:
-    # Création d'un contexte SSL pour le site B
-    # Configuration pour vérifier le certificat du serveur central
-    context_site_b = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    context_site_b.check_hostname = False
-    context_site_b.verify_mode = ssl.CERT_NONE
+    # Ajout du certificat du serveur central dans les trusted certs
     context_site_b.load_verify_locations(certfile_central)
-    # context_site_b.load_verify_locations(certfile_site_b)
-    # context_site_b.load_cert_chain(certfile=certfile_site_b, keyfile=keyfile_site_b)
-    # context_site_b.load_cert_chain(certfile=certfile_central)
 
     with context_site_b.wrap_socket(sock, server_hostname='192.168.1.100') as ssock:
         # Envoi du site de destination
         ssock.sendall(destination)
 
-        # Chiffrement du message
-        #encrypted_message = context_site_b.encrypt(message)
-        #encrypted_message = ssock.sendall(message)
-        #ssock.sendall(encrypted_message)
+        # Envoi du message 
         ssock.sendall(message)
 
-        # Réception de données
+        # Réception des données
         response = ssock.recv(4096)
 
         # Traitement des données reçues

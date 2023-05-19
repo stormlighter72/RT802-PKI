@@ -1,4 +1,9 @@
-# Importation des modules nécessaires
+#####################################################################
+##     Programme de génération de certificats pour les clients     ##
+##                       Site Central                              ##
+#####################################################################
+
+# Importation des modules
 import socket
 import ssl
 from OpenSSL import crypto
@@ -12,7 +17,7 @@ class PKIServer:
         self.keyfile = keyfile
 
     def start(self):
-        # Création du socket serveur et liage à l'adresse IP et au port spécifiés
+        # Création du socket pour le serveur
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind((self.host, self.port))
         sock.listen(5)
@@ -43,8 +48,7 @@ class PKIServer:
                 cert.get_subject().CN = "Site B"
             else:
                 cert.get_subject().CN = "unknown"
-            # cert.get_subject().CN = "Root CA"
-            #Issuer = crypto.X509Name()
+            # Définition de l'emetteur
             Issuer = crypto.X509Name(crypto.X509().get_subject())
             Issuer.CN = 'Root CA'
             Issuer.OU = "PKI"
@@ -53,18 +57,15 @@ class PKIServer:
             Issuer.ST = "Ile de France"
             Issuer.C = "FR"
             cert.set_issuer(Issuer)
-            # cert.set_issuer().ST = "Ile de France"
-            # cert.set_issuer().L = "Paris"
-            # cert.set_issuer().O = "PKI"
-            # cert.set_issuer().OU = "PKI"
-            # cert.set_issuer().CN = "Root CA"
+            # Ajout de la clef public
             cert.set_pubkey(public_key)
             cert.set_serial_number(1000)
             cert.gmtime_adj_notBefore(0)
+            # Validité : 10 ans
             cert.gmtime_adj_notAfter(315360000)
-            # cert.set_issuer(crypto.X509Name('CN=Root CA'))
-            # cert.set_subject(crypto.X509Name('CN=Site A'))
+            # Signature du certificat avec clef privée serveur PKI
             cert.sign(crypto.load_privatekey(crypto.FILETYPE_PEM, open(keyfile).read()), 'sha256')
+            
             # Envoi du certificat X509 au site A
             conn.sendall(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
 
@@ -89,19 +90,6 @@ class PKIServer:
 certfile = "/PKI/root_cert.crt"
 keyfile = "/etc/ssl/private/root_key.crt"
 
-# Instanciation du serveur PKI et démarrage du serveur
+# Démarrage du serveur PKI
 server = PKIServer("0.0.0.0", 32700, certfile, keyfile)
-# while True:
-#     # Accepter une connexion entrante
-#     client, adresse_client = server.accept()
-#     print("Connexion entrante de", adresse_client[0])
-
-
-
 server.start()
-
-
-
-
-# else:
-#     certfile_name = "unknown.crt"

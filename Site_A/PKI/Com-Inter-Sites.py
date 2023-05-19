@@ -1,25 +1,29 @@
+#####################################################################
+##              Programme de communication inter-site              ##
+##                             Site A                              ##
+#####################################################################
+
+# Importation des modules
 import ssl
 import socket
 import threading
 
-# Adresse et port d'écoute du site A
+# Définition de l'adresse IP et du port d'écoute du site A
 site_a_host = '192.168.1.101'
 site_a_port = 32700
 
-# Chemin du certificat du site central
+# Chemin vers le certificat du site central
 certfile_central = '/usr/share/ca-certificates/PKI/root_cert.crt'
-# Chemin du certificat du site A
+# Chemin vers le certificat du site A
 certfile_site_a = '/PKI/Cert/site_a.crt'
 keyfile_site_a = '/etc/ssl/private/site_a_key.crt'
 
 # Création d'un contexte SSL pour le site A
-# context_site_a = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-# context_site_a.load_verify_locations(certfile_central)
 context_site_a = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 context_site_a.check_hostname = False
 context_site_a.verify_mode = ssl.CERT_NONE
 
-# Fonction pour recevoir les messages
+# Fonction pour la réception des messages
 def receive_messages():
     while True:
         context_site_a = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -49,28 +53,17 @@ message = input('Message à envoyer : ').encode()
 
 # Connexion au site central
 with socket.create_connection(('192.168.1.100', 32700)) as sock:
-    # Création d'un contexte SSL pour le site A
-    # Configuration pour vérifier le certificat du serveur central
-    # context_site_a = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    # context_site_a.check_hostname = False
-    # context_site_a.verify_mode = ssl.CERT_NONE
-
-    # context_site_a.load_verify_locations(certfile_site_a)
+    # Ajout du certificat du serveur central dans les trusted certs
     context_site_a.load_verify_locations(certfile_central)
-    # context_site_a.load_cert_chain(certfile=certfile_site_a, keyfile=keyfile_site_a)
-    # context_site_a.load_cert_chain(certfile=certfile_central)
 
     with context_site_a.wrap_socket(sock, server_hostname='192.168.1.100') as ssock:
         # Envoi du site de destination
         ssock.sendall(destination)
 
-        # Chiffrement du message
-        #encrypted_message = context_site_a.encrypt(message)
-        #encrypted_message = ssock.sendall(message)
-        #ssock.sendall(encrypted_message)
+        # Envoi du message 
         ssock.sendall(message)
 
-        # Réception de données
+        # Réception des données
         response = ssock.recv(4096)
 
         # Traitement des données reçues

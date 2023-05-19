@@ -1,3 +1,9 @@
+#####################################################################
+##              Programme de communication inter-site              ##
+##                          Site Central                           ##
+#####################################################################
+
+# Importation des modules
 import ssl
 import socket
 
@@ -5,22 +11,24 @@ import socket
 central_host = '192.168.1.100'
 central_port = 32700
 
-# Chemin du certificat du site central
+#  Chemin vers le certificat du site central
 certfile = "/PKI/root_cert.crt"
-# Chemin de la clé privée correspondante au certificat
+# Chemin vers clé privée correspondante au certificat
 keyfile = "/etc/ssl/private/root_key.crt"
 
-# Chemin du certificat du site A
+# Chemin vers le certificat du site A
 certfile_site_a = '/usr/share/ca-certificates/Cert-Sites/site_a.crt'
-# Chemin du certificat du site B
+# Chemin vers le certificat du site B
 certfile_site_b = '/usr/share/ca-certificates/Cert-Sites/site_b.crt'
 
 # Création d'un contexte SSL pour le serveur central
 context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 
-# Configuration pour vérifier le certificat des clients
+# Configuration pour ne pas vérifier le certificat des clients
 context.check_hostname = False
 context.verify_mode = ssl.CERT_NONE
+
+# Ajout de Certificats dans la liste de Certificats de confiance
 context.load_verify_locations(certfile)
 context.load_verify_locations(certfile_site_a)
 context.load_verify_locations(certfile_site_b)
@@ -36,7 +44,7 @@ server_ssl_context = context.wrap_socket(server, server_side=True)
 print("Serveur Actif !")
 
 while True:
-    # Attente d'une connexion
+    # Attente d'une connexion + accepte
     conn, addr = server_ssl_context.accept()
     try:
         # Réception du site de destination
@@ -44,9 +52,6 @@ while True:
 
         # Réception du contenu du message
         message = conn.recv(4096)
-
-        # Traitement des données reçues
-        # print('Message à destination du site', destination, ':', message.decode())
 
         # Vérification de la destination et envoi du message
         if destination == 'A':
